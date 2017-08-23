@@ -15,7 +15,7 @@ from torch.autograd import Variable
 
 def normalized_columns_initializer(weights, std=1.0):
     x = torch.randn(weights.size())
-    x *= std / torch.sqrt((x**2).sum(1).expand(1)) #, keepdim=True))
+    x *= std / torch.sqrt((x**2).sum(1, keepdim=True))
     return x
 
 
