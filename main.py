@@ -9,7 +9,6 @@ import torch.optim as optim
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
-from envs import create_atari_env
 from model import ActorCritic
 from train import train
 from test import test

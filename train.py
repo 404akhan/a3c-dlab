@@ -6,7 +6,6 @@ import itertools
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from envs import create_atari_env
 from model import ActorCritic
 from torch.autograd import Variable
 from torchvision import datasets, transforms
