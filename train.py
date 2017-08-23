@@ -13,6 +13,8 @@ from torchvision import datasets, transforms
 
 import matplotlib.pyplot as plt 
 import numpy as np 
+from helpers import *
+
 
 def ensure_shared_grads(model, shared_model):
     for param, shared_param in zip(model.parameters(), shared_model.parameters()):
@@ -20,22 +22,11 @@ def ensure_shared_grads(model, shared_model):
             return
         shared_param._grad = param.grad
 
-def is_dead(info):
-    dead = False
-    if is_dead.current_life > info['ale.lives']:
-        dead = True
-    is_dead.current_life = info['ale.lives']
-    return dead
-
-is_dead.current_life = 0
-
 def train(rank, args, shared_model, optimizer=None):
     torch.manual_seed(args.seed + rank)
 
-    env = create_atari_env(args.env_name)
-    env.seed(args.seed + rank)
-
-    model = ActorCritic(env.observation_space.shape[0], env.action_space, args.num_skips)
+    env = WrapEnv(args.env_name)
+    model = ActorCritic(4, env.num_actions, args.num_skips)
 
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)
@@ -48,6 +39,7 @@ def train(rank, args, shared_model, optimizer=None):
     done = True
 
     episode_length = 0
+    sum_reward = 0
     for ep_counter in itertools.count(1):
         # Sync with the shared model
         model.load_state_dict(shared_model.state_dict())
@@ -70,7 +62,6 @@ def train(rank, args, shared_model, optimizer=None):
             action_np = action.numpy()[0][0]
             if action_np < model.n_real_acts:
                 state_new, reward, done, info = env.step(action_np)
-                dead = is_dead(info)
                 state = np.append(state.numpy()[1:,:,:], state_new, axis=0)
                 done = done or episode_length >= args.max_episode_length
                 
@@ -81,34 +72,34 @@ def train(rank, args, shared_model, optimizer=None):
                 reward = 0.
                 for _ in range(action_np - model.n_real_acts + 2):
                     state_new, rew, done, info = env.step(0)  # instead of random perform NOOP=0
-                    dead = is_dead(info)
                     state = np.append(state[1:,:,:], state_new, axis=0) 
                     done = done or episode_length >= args.max_episode_length
 
                     reward += rew
                     episode_length += 1
-                    if done or dead:
+                    if done:
                         break
                 reward = max(min(reward, 1), -1)
 
+            sum_reward += reward
             if done:
-                episode_length = 0
                 state = env.reset()
-                env.seed(args.seed + rank + (args.num_processes+1)*ep_counter)
                 state = np.concatenate([state] * 4, axis=0)
-            elif dead:
-                state = np.concatenate([state_new] * 4, axis=0)
+                
+                print('ep len {}, sum rew {}'.format(episode_length, sum_reward))
+                episode_length = 0
+                sum_reward = 0
 
             state = torch.from_numpy(state)
             values.append(value)
             log_probs.append(log_prob)
             rewards.append(reward)
 
-            if done or dead:
+            if done:
                 break
 
         R = torch.zeros(1, 1)
-        if not done and not dead:
+        if not done:
             value, _ = model(Variable( state.unsqueeze(0) ))
             R = value.data
 

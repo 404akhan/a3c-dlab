@@ -14,6 +14,8 @@ from model import ActorCritic
 from train import train
 from test import test
 import my_optim
+from helpers import *
+
 
 # Based on
 # https://github.com/pytorch/examples/tree/master/mnist_hogwild
@@ -29,14 +31,14 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--num-processes', type=int, default=4, metavar='N',
                     help='how many training processes to use (default: 4)')
-parser.add_argument('--num-skips', type=int, default=3, metavar='SKIP',
+parser.add_argument('--num-skips', type=int, default=0, metavar='SKIP',
                     help='how many frame skip allowed')
 parser.add_argument('--num-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=10000, metavar='M',
                     help='maximum length of an episode (default: 10000)')
-parser.add_argument('--env-name', default='PongDeterministic-v3', metavar='ENV',
-                    help='environment to train on (default: PongDeterministic-v3)')
+parser.add_argument('--env-name', default='stairway_to_melon', metavar='ENV',
+                    help='environment to train on (default: stairway_to_melon)')
 parser.add_argument('--no-shared', default=False, metavar='O',
                     help='use an optimizer without shared momentum.')
 parser.add_argument('--model-name', default='def', 
@@ -55,9 +57,8 @@ if __name__ == '__main__':
 
     torch.manual_seed(args.seed)
 
-    env = create_atari_env(args.env_name)
-    shared_model = ActorCritic(
-        env.observation_space.shape[0], env.action_space, args.num_skips)
+    env = WrapEnv(args.env_name)
+    shared_model = ActorCritic(4, env.num_actions, args.num_skips)
     shared_model.share_memory()
 
     if args.no_shared:
