@@ -8,15 +8,10 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
-# def normalized_columns_initializer(weights, std=1.0):
-#     out = torch.randn(weights.size())
-#     out *= std / torch.sqrt(out.pow(2).sum(1).expand_as(out))
-#     return out
-
 def normalized_columns_initializer(weights, std=1.0):
-    x = torch.randn(weights.size())
-    x *= std / torch.sqrt((x**2).sum(1, keepdim=True))
-    return x
+    out = torch.randn(weights.size())
+    out *= std / torch.sqrt(out.pow(2).sum(1).expand_as(out))
+    return out
 
 
 def weights_init(m):
